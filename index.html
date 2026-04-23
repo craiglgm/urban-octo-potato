@@ -173,6 +173,19 @@ SOFTWARE.
             border: 3px dashed #000;
         }
 
+        .tile.touch-dragging {
+            position: fixed;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0.9;
+            transform: scale(1.1);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .tile.touch-origin {
+            opacity: 0.3;
+        }
+
         /* Color classes */
         .tile.yellow {
             background-color: #f9df6d;
@@ -300,6 +313,14 @@ SOFTWARE.
         // State
         let words = []; // Array of { text: string, color: string|null }
         let draggedIndex = null;
+
+        // Touch drag state
+        let touchDragIndex = null;
+        let touchClone = null;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+        let hasMoved = false;
 
         // DOM elements
         const gridEl = document.getElementById('grid');
@@ -491,8 +512,13 @@ SOFTWARE.
                 tile.addEventListener('dragleave', handleDragLeave);
                 tile.addEventListener('drop', handleDrop);
 
-                // Click to cycle color
+                // Click to cycle color (desktop)
                 tile.addEventListener('click', () => cycleColor(index));
+
+                // Touch events for mobile
+                tile.addEventListener('touchstart', handleTouchStart, { passive: false });
+                tile.addEventListener('touchmove', handleTouchMove, { passive: false });
+                tile.addEventListener('touchend', handleTouchEnd);
 
                 gridEl.appendChild(tile);
             });
@@ -539,6 +565,105 @@ SOFTWARE.
             }
 
             target.classList.remove('drag-over');
+        }
+
+        // Touch handlers for mobile
+        function handleTouchStart(e) {
+            const tile = e.target.closest('.tile');
+            if (!tile) return;
+
+            touchDragIndex = parseInt(tile.dataset.index);
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+            hasMoved = false;
+        }
+
+        function handleTouchMove(e) {
+            if (touchDragIndex === null) return;
+
+            const touch = e.touches[0];
+            const dx = touch.clientX - touchStartX;
+            const dy = touch.clientY - touchStartY;
+
+            // Only start dragging if moved more than 10px
+            if (!hasMoved && Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+                return;
+            }
+
+            hasMoved = true;
+            e.preventDefault(); // Prevent scrolling while dragging
+
+            // Create clone on first move
+            if (!touchClone) {
+                const originalTile = document.querySelector(`.tile[data-index="${touchDragIndex}"]`);
+                if (!originalTile) return;
+
+                originalTile.classList.add('touch-origin');
+
+                touchClone = originalTile.cloneNode(true);
+                touchClone.classList.add('touch-dragging');
+                const rect = originalTile.getBoundingClientRect();
+                touchClone.style.width = rect.width + 'px';
+                touchClone.style.height = rect.height + 'px';
+                document.body.appendChild(touchClone);
+            }
+
+            // Move clone with touch
+            touchClone.style.left = (touch.clientX - touchClone.offsetWidth / 2) + 'px';
+            touchClone.style.top = (touch.clientY - touchClone.offsetHeight / 2) + 'px';
+
+            // Highlight tile under touch
+            document.querySelectorAll('.tile').forEach(t => t.classList.remove('drag-over'));
+            const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+            const tileUnder = elementUnder?.closest('.tile');
+            if (tileUnder && parseInt(tileUnder.dataset.index) !== touchDragIndex) {
+                tileUnder.classList.add('drag-over');
+            }
+        }
+
+        function handleTouchEnd(e) {
+            if (touchDragIndex === null) return;
+
+            const wasDragging = hasMoved && touchClone;
+
+            // Clean up clone
+            if (touchClone) {
+                touchClone.remove();
+                touchClone = null;
+            }
+
+            // Remove origin styling
+            document.querySelectorAll('.tile').forEach(t => {
+                t.classList.remove('touch-origin');
+                t.classList.remove('drag-over');
+            });
+
+            if (wasDragging) {
+                // Find tile under final touch position
+                const touch = e.changedTouches[0];
+                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+                const tileUnder = elementUnder?.closest('.tile');
+
+                if (tileUnder) {
+                    const targetIndex = parseInt(tileUnder.dataset.index);
+                    if (targetIndex !== touchDragIndex) {
+                        // Swap words
+                        [words[touchDragIndex], words[targetIndex]] = [words[targetIndex], words[touchDragIndex]];
+                        saveToStorage();
+                        render();
+                    }
+                }
+            } else {
+                // Short tap without movement = cycle color
+                const tapDuration = Date.now() - touchStartTime;
+                if (tapDuration < 300) {
+                    cycleColor(touchDragIndex);
+                }
+            }
+
+            touchDragIndex = null;
+            hasMoved = false;
         }
 
         // Cycle through colors on click
