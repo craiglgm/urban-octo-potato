@@ -1,0 +1,636 @@
+<!--
+MIT License
+
+Copyright (c) 2025 Craig Glick Miller
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connections Puzzle Helper</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #000;
+        }
+
+        /* Input Section */
+        .input-section {
+            margin-bottom: 20px;
+        }
+
+        .input-section label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .input-section textarea {
+            width: 100%;
+            height: 100px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .input-section textarea:focus {
+            outline: none;
+            border-color: #000;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border: 2px solid #000;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background-color: #000;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background-color: #333;
+        }
+
+        .btn-secondary {
+            background-color: #fff;
+            color: #000;
+        }
+
+        .btn-secondary:hover {
+            background-color: #f0f0f0;
+        }
+
+        .btn-danger {
+            background-color: #fff;
+            color: #c00;
+            border-color: #c00;
+        }
+
+        .btn-danger:hover {
+            background-color: #fee;
+        }
+
+        /* Cookie Setup */
+        .cookie-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f8f8;
+            border-radius: 8px;
+        }
+
+        .cookie-section summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .cookie-section input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: monospace;
+        }
+
+        .cookie-section input:focus {
+            outline: none;
+            border-color: #000;
+        }
+
+        .cookie-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        /* Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .tile {
+            aspect-ratio: 1.4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #efefe6;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: grab;
+            user-select: none;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            padding: 8px;
+            text-align: center;
+            word-break: break-word;
+            line-height: 1.2;
+        }
+
+        .tile:hover {
+            transform: scale(1.02);
+        }
+
+        .tile:active {
+            cursor: grabbing;
+        }
+
+        .tile.dragging {
+            opacity: 0.5;
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .tile.drag-over {
+            border: 3px dashed #000;
+        }
+
+        /* Color classes */
+        .tile.yellow {
+            background-color: #f9df6d;
+        }
+
+        .tile.green {
+            background-color: #a0c35a;
+        }
+
+        .tile.blue {
+            background-color: #b0c4ef;
+        }
+
+        .tile.purple {
+            background-color: #ba81c5;
+        }
+
+        /* Status message */
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .status.error {
+            display: block;
+            background-color: #fee;
+            color: #c00;
+        }
+
+        .status.success {
+            display: block;
+            background-color: #efe;
+            color: #060;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .legend-color.yellow { background-color: #f9df6d; }
+        .legend-color.green { background-color: #a0c35a; }
+        .legend-color.blue { background-color: #b0c4ef; }
+        .legend-color.purple { background-color: #ba81c5; }
+
+        /* Instructions */
+        .instructions {
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        @media (max-width: 500px) {
+            .tile {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Connections Helper</h1>
+
+        <div class="input-section">
+            <label for="words-input">Paste 16 words (comma, space, or newline separated):</label>
+            <textarea id="words-input" placeholder="WORD1, WORD2, WORD3..."></textarea>
+            <div class="button-row">
+                <button class="btn-primary" onclick="loadWords()">Load Words</button>
+                <button class="btn-secondary" onclick="fetchTodaysPuzzle()">Fetch Today's Puzzle</button>
+                <button class="btn-secondary" onclick="shuffleWords()">Shuffle</button>
+                <button class="btn-danger" onclick="clearAll()">Clear All</button>
+            </div>
+        </div>
+
+        <details class="cookie-section">
+            <summary>NYT-S Cookie Setup (for fetching puzzles)</summary>
+            <input type="text" id="nyt-cookie" placeholder="Paste your NYT-S cookie value here">
+            <button class="btn-secondary" style="margin-top: 10px;" onclick="saveCookie()">Save Cookie</button>
+            <p class="cookie-hint">
+                To get your NYT-S cookie: Open NYT Connections in your browser → Open DevTools (F12) →
+                Application tab → Cookies → Copy the NYT-S value
+            </p>
+        </details>
+
+        <div id="status" class="status"></div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color yellow"></div> Yellow (Easiest)</div>
+            <div class="legend-item"><div class="legend-color green"></div> Green</div>
+            <div class="legend-item"><div class="legend-color blue"></div> Blue</div>
+            <div class="legend-item"><div class="legend-color purple"></div> Purple (Hardest)</div>
+        </div>
+
+        <p class="instructions">
+            <strong>Drag</strong> tiles to rearrange | <strong>Click</strong> to cycle colors
+        </p>
+
+        <div id="grid" class="grid"></div>
+    </div>
+
+    <script>
+        // Color cycle order
+        const COLORS = [null, 'yellow', 'green', 'blue', 'purple'];
+
+        // State
+        let words = []; // Array of { text: string, color: string|null }
+        let draggedIndex = null;
+
+        // DOM elements
+        const gridEl = document.getElementById('grid');
+        const statusEl = document.getElementById('status');
+        const wordsInputEl = document.getElementById('words-input');
+        const cookieInputEl = document.getElementById('nyt-cookie');
+
+        // Initialize
+        function init() {
+            loadFromStorage();
+            loadCookieFromStorage();
+            render();
+        }
+
+        // Parse words from input
+        function parseWords(input) {
+            return input
+                .split(/[,\n]+/)
+                .map(w => w.trim().toUpperCase())
+                .filter(w => w.length > 0)
+                .slice(0, 16);
+        }
+
+        // Load words from textarea
+        function loadWords() {
+            const input = wordsInputEl.value;
+            const parsed = parseWords(input);
+
+            if (parsed.length === 0) {
+                showStatus('Please enter some words', 'error');
+                return;
+            }
+
+            if (parsed.length !== 16) {
+                showStatus(`Found ${parsed.length} words, need exactly 16`, 'error');
+                return;
+            }
+
+            words = parsed.map(text => ({ text, color: null }));
+            saveToStorage();
+            render();
+            showStatus('Words loaded!', 'success');
+            setTimeout(() => hideStatus(), 2000);
+        }
+
+        // Fetch today's puzzle from NYT
+        async function fetchTodaysPuzzle() {
+            const cookie = localStorage.getItem('nyt-cookie');
+
+            if (!cookie) {
+                showStatus('Please set your NYT-S cookie first', 'error');
+                return;
+            }
+
+            showStatus('Fetching puzzle...', 'success');
+
+            try {
+                // NYT Connections API endpoint
+                const today = new Date().toISOString().split('T')[0];
+                const url = `https://www.nytimes.com/svc/connections/v2/${today}.json`;
+
+                const response = await fetch(url, {
+                    credentials: 'include',
+                    headers: {
+                        'Cookie': `NYT-S=${cookie}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Extract words from categories
+                const allWords = [];
+                if (data.categories) {
+                    data.categories.forEach(cat => {
+                        if (cat.cards) {
+                            cat.cards.forEach(card => {
+                                allWords.push(card.content);
+                            });
+                        }
+                    });
+                }
+
+                if (allWords.length !== 16) {
+                    throw new Error(`Expected 16 words, got ${allWords.length}`);
+                }
+
+                // Shuffle the words (so they're not in category order)
+                for (let i = allWords.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [allWords[i], allWords[j]] = [allWords[j], allWords[i]];
+                }
+
+                words = allWords.map(text => ({ text: text.toUpperCase(), color: null }));
+                wordsInputEl.value = allWords.join(', ');
+                saveToStorage();
+                render();
+                showStatus('Puzzle loaded!', 'success');
+                setTimeout(() => hideStatus(), 2000);
+
+            } catch (err) {
+                console.error('Fetch error:', err);
+                showStatus(
+                    'Could not fetch puzzle. CORS may block this request from a local file. ' +
+                    'Try copying words manually from the NYT site.',
+                    'error'
+                );
+            }
+        }
+
+        // Clear all
+        function clearAll() {
+            words = [];
+            wordsInputEl.value = '';
+            localStorage.removeItem('connections-words');
+            render();
+            hideStatus();
+        }
+
+        // Shuffle only uncolored words
+        function shuffleWords() {
+            if (words.length === 0) {
+                showStatus('No words to shuffle', 'error');
+                return;
+            }
+
+            // Get indices of uncolored words
+            const uncoloredIndices = [];
+            const uncoloredWords = [];
+            words.forEach((word, i) => {
+                if (!word.color) {
+                    uncoloredIndices.push(i);
+                    uncoloredWords.push(word);
+                }
+            });
+
+            if (uncoloredWords.length <= 1) {
+                showStatus('No uncolored words to shuffle', 'error');
+                return;
+            }
+
+            // Fisher-Yates shuffle on uncolored words only
+            for (let i = uncoloredWords.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [uncoloredWords[i], uncoloredWords[j]] = [uncoloredWords[j], uncoloredWords[i]];
+            }
+
+            // Put shuffled words back into their positions
+            uncoloredIndices.forEach((idx, i) => {
+                words[idx] = uncoloredWords[i];
+            });
+
+            saveToStorage();
+            render();
+        }
+
+        // Save/Load cookie
+        function saveCookie() {
+            const cookie = cookieInputEl.value.trim();
+            if (cookie) {
+                localStorage.setItem('nyt-cookie', cookie);
+                showStatus('Cookie saved!', 'success');
+                setTimeout(() => hideStatus(), 2000);
+            }
+        }
+
+        function loadCookieFromStorage() {
+            const cookie = localStorage.getItem('nyt-cookie');
+            if (cookie) {
+                cookieInputEl.value = cookie;
+            }
+        }
+
+        // LocalStorage
+        function saveToStorage() {
+            localStorage.setItem('connections-words', JSON.stringify(words));
+        }
+
+        function loadFromStorage() {
+            const saved = localStorage.getItem('connections-words');
+            if (saved) {
+                try {
+                    words = JSON.parse(saved);
+                } catch (e) {
+                    words = [];
+                }
+            }
+        }
+
+        // Status messages
+        function showStatus(message, type) {
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+        }
+
+        function hideStatus() {
+            statusEl.className = 'status';
+        }
+
+        // Render the grid
+        function render() {
+            gridEl.innerHTML = '';
+
+            if (words.length === 0) {
+                gridEl.innerHTML = '<div class="empty-state" style="grid-column: span 4;">Enter 16 words above to get started</div>';
+                return;
+            }
+
+            words.forEach((word, index) => {
+                const tile = document.createElement('div');
+                tile.className = 'tile' + (word.color ? ' ' + word.color : '');
+                tile.textContent = word.text;
+                tile.draggable = true;
+                tile.dataset.index = index;
+
+                // Drag events
+                tile.addEventListener('dragstart', handleDragStart);
+                tile.addEventListener('dragend', handleDragEnd);
+                tile.addEventListener('dragover', handleDragOver);
+                tile.addEventListener('dragleave', handleDragLeave);
+                tile.addEventListener('drop', handleDrop);
+
+                // Click to cycle color
+                tile.addEventListener('click', () => cycleColor(index));
+
+                gridEl.appendChild(tile);
+            });
+        }
+
+        // Drag and Drop handlers
+        function handleDragStart(e) {
+            draggedIndex = parseInt(e.target.dataset.index);
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            document.querySelectorAll('.tile').forEach(t => t.classList.remove('drag-over'));
+            draggedIndex = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const target = e.target.closest('.tile');
+            if (target && parseInt(target.dataset.index) !== draggedIndex) {
+                target.classList.add('drag-over');
+            }
+        }
+
+        function handleDragLeave(e) {
+            e.target.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const target = e.target.closest('.tile');
+            if (!target) return;
+
+            const targetIndex = parseInt(target.dataset.index);
+
+            if (draggedIndex !== null && draggedIndex !== targetIndex) {
+                // Swap words
+                [words[draggedIndex], words[targetIndex]] = [words[targetIndex], words[draggedIndex]];
+                saveToStorage();
+                render();
+            }
+
+            target.classList.remove('drag-over');
+        }
+
+        // Cycle through colors on click
+        function cycleColor(index) {
+            const currentColor = words[index].color;
+            const currentIdx = COLORS.indexOf(currentColor);
+            const nextIdx = (currentIdx + 1) % COLORS.length;
+            words[index].color = COLORS[nextIdx];
+            saveToStorage();
+            render();
+        }
+
+        // Start the app
+        init();
+    </script>
+</body>
+</html>
