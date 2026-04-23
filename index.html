@@ -128,41 +128,6 @@ SOFTWARE.
             background-color: #fee;
         }
 
-        /* Cookie Setup */
-        .cookie-section {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #f8f8f8;
-            border-radius: 8px;
-        }
-
-        .cookie-section summary {
-            cursor: pointer;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .cookie-section input {
-            width: 100%;
-            padding: 10px;
-            margin-top: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: monospace;
-        }
-
-        .cookie-section input:focus {
-            outline: none;
-            border-color: #000;
-        }
-
-        .cookie-hint {
-            font-size: 12px;
-            color: #666;
-            margin-top: 8px;
-        }
-
         /* Grid */
         .grid {
             display: grid;
@@ -311,15 +276,6 @@ SOFTWARE.
             </div>
         </div>
 
-        <details class="cookie-section">
-            <summary>NYT-S Cookie Setup (for fetching puzzles)</summary>
-            <input type="text" id="nyt-cookie" placeholder="Paste your NYT-S cookie value here">
-            <button class="btn-secondary" style="margin-top: 10px;" onclick="saveCookie()">Save Cookie</button>
-            <p class="cookie-hint">
-                To get your NYT-S cookie: Open NYT Connections in your browser → Open DevTools (F12) →
-                Application tab → Cookies → Copy the NYT-S value
-            </p>
-        </details>
 
         <div id="status" class="status"></div>
 
@@ -349,12 +305,10 @@ SOFTWARE.
         const gridEl = document.getElementById('grid');
         const statusEl = document.getElementById('status');
         const wordsInputEl = document.getElementById('words-input');
-        const cookieInputEl = document.getElementById('nyt-cookie');
 
         // Initialize
         function init() {
             loadFromStorage();
-            loadCookieFromStorage();
             render();
         }
 
@@ -389,28 +343,15 @@ SOFTWARE.
             setTimeout(() => hideStatus(), 2000);
         }
 
-        // Fetch today's puzzle from NYT
+        // Fetch today's puzzle from NYT via Cloudflare Worker proxy
         async function fetchTodaysPuzzle() {
-            const cookie = localStorage.getItem('nyt-cookie');
-
-            if (!cookie) {
-                showStatus('Please set your NYT-S cookie first', 'error');
-                return;
-            }
-
             showStatus('Fetching puzzle...', 'success');
 
             try {
-                // NYT Connections API endpoint
                 const today = new Date().toISOString().split('T')[0];
-                const url = `https://www.nytimes.com/svc/connections/v2/${today}.json`;
+                const url = `https://patient-brook-0a05.craig-1d9.workers.dev/?date=${today}`;
 
-                const response = await fetch(url, {
-                    credentials: 'include',
-                    headers: {
-                        'Cookie': `NYT-S=${cookie}`
-                    }
-                });
+                const response = await fetch(url);
 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
@@ -449,11 +390,7 @@ SOFTWARE.
 
             } catch (err) {
                 console.error('Fetch error:', err);
-                showStatus(
-                    'Could not fetch puzzle. CORS may block this request from a local file. ' +
-                    'Try copying words manually from the NYT site.',
-                    'error'
-                );
+                showStatus('Could not fetch puzzle. Please try again or enter words manually.', 'error');
             }
         }
 
@@ -501,23 +438,6 @@ SOFTWARE.
 
             saveToStorage();
             render();
-        }
-
-        // Save/Load cookie
-        function saveCookie() {
-            const cookie = cookieInputEl.value.trim();
-            if (cookie) {
-                localStorage.setItem('nyt-cookie', cookie);
-                showStatus('Cookie saved!', 'success');
-                setTimeout(() => hideStatus(), 2000);
-            }
-        }
-
-        function loadCookieFromStorage() {
-            const cookie = localStorage.getItem('nyt-cookie');
-            if (cookie) {
-                cookieInputEl.value = cookie;
-            }
         }
 
         // LocalStorage
